@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
+
+# Bootstrap in vcpkg
+include(cmake/GetVcpkg.cmake)
 project(GridLAB-D)
 
 OPTION(GLD_WARNING_WORK "Make warnings more pedantic" OFF)
@@ -9,7 +12,7 @@ if (GLD_WARNING_WORK)
                 "/WX"
                 CACHE INTERNAL
                 "GLD_COMPILE_OPTIONS"
-                )
+        )
     else ()
         SET(GLD_COMPILE_OPTIONS
                 "-Wall"
@@ -17,7 +20,7 @@ if (GLD_WARNING_WORK)
                 "-pedantic"
                 CACHE INTERNAL
                 "GLD_COMPILE_OPTIONS"
-                )
+        )
     endif ()
 else ()
     if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -28,7 +31,7 @@ else ()
                 "-Wno-stringop-overflow"
                 CACHE INTERNAL
                 "GLD_COMPILE_OPTIONS"
-                )
+        )
     endif ()
 endif ()
 
@@ -61,36 +64,76 @@ include(cmake/CheckDependencies.cmake)
 include(cmake/BuildNumber.cmake)
 include(cmake/SanitizePaths.cmake)
 
-option(GLD_USE_EIGEN "[NOT YET SUPPORTED] - Use Eigen package for LU Decomposition in Powerflow" OFF)
-option(GLD_USE_FRUGALLY "User frugally-deep package for tensor model import" OFF)
-option(GLD_USE_SUPERLU "Use SuperLU package for LU Decomposition in Powerflow" ON)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib/static)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
+
 option(GLD_USE_HELICS "Link with HELICS" OFF)
 option(GLD_USE_FNCS "Link with FNCS" OFF)
-option(GLD_USE_HDF5 "Link with HDF5" OFF)
 option(GLD_USE_MYSQL "Link with MySQL" OFF)
 set(GLD_HELICS_DIR "" CACHE PATH "Search path for HELICS library")
 set(GLD_MYSQL_DIR "" CACHE PATH "Search path for MySQL library")
 set(GLD_FNCS_DIR "" CACHE PATH "Search path for FNCS library")
-set(GLD_ZeroMQ_DIR "" CACHE PATH "Search path for ZeroMQ library (FNCS dependency)")
-set(GLD_CZMQ_DIR "" CACHE PATH "Search path for CZMQ library (FNCS dependency)")
-set(GLD_FRUGALLY_DIR "" CACHE PATH "Search path for Frugally-deep library")
-set(GLD_FRUGAL_EIGEN_DIR "" CACHE PATH "Search path for Eigen installed as part of Frugally-deep library")
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ON) # TODO: only required for SuperLU_MT support with Clang. Future removal recommended.
+# Locate and bind all vcpkg dependencies
+set(CURSES_NEED_NCURSES TRUE)
+find_package(Curses REQUIRED)
+
+find_package(Eigen3 CONFIG REQUIRED)
+find_package(frugally-deep CONFIG REQUIRED)
+find_package(jsoncpp CONFIG REQUIRED)
+find_package(superlu CONFIG REQUIRED)
+find_package(XercesC REQUIRED)
+find_package(hdf5 CONFIG REQUIRED)
+
+set(GLD_VCPKG_DEPS
+        Eigen3::Eigen
+        frugally-deep::fdeep
+        JsonCpp::JsonCpp
+        superlu::superlu
+        XercesC::XercesC
+        hdf5::hdf5-static
+        hdf5::hdf5_hl-static
+)
+if (GLD_USE_HELICS)
+    find_package(ZeroMQ CONFIG REQUIRED)
+    list(APPEND GLD_VCPKG_DEPS "libzmq" "libzmq-static")
+endif ()
+if (GLD_USE_FNCS)
+    find_package(ZeroMQ CONFIG REQUIRED)
+    find_package(czmq CONFIG REQUIRED)
+    list(APPEND GLD_VCPKG_DEPS "libzmq" "libzmq-static" "czmq" "czmq-static")
+endif ()
+#if (GLD_USE_MYSQL)
+#    find_package(libmysql CONFIG REQUIRED)
+    #    list(APPEND GLD_VCPKG_DEPS "libzmq" "libzmq-static" )
+#endif ()
+LIST(REMOVE_DUPLICATES GLD_VCPKG_DEPS)
+mark_as_advanced(GLD_VCPKG_DEPS)
+
+# Set up platform specific library linking and platform identification
+if (WIN32 OR MSYS OR MINGW OR CYGWIN)
+    find_package(dlfcn-win32 REQUIRED)
+    set(OS_SPECIFIC_LIBRARIES ws2_32 wsock32 m dlfcn-win32:dl)
+    set(FOUND_WINDOWS yes CACHE INTERNAL "Tell script generator we're Windows")
+    add_compile_options(-static-libgcc -static-libstdc++ -static)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++ -static")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -static")
+elseif (APPLE)
+    set(OS_SPECIFIC_LIBRARIES ${CMAKE_DL_LIBS})
+    set(FOUND_MACOS yes CACHE INTERNAL "Tell script generator we're MacOS")
+else ()
+    set(OS_SPECIFIC_LIBRARIES ${CMAKE_DL_LIBS})
+endif ()
+LIST(APPEND CMAKE_REQUIRED_LIBRARIES ${OS_SPECIFIC_LIBRARIES})
+if (CMAKE_REQUIRED_LIBRARIES)
+    LIST(REMOVE_DUPLICATES CMAKE_REQUIRED_LIBRARIES)
+endif ()
+
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 find_package(Threads REQUIRED)
 if (CMAKE_USE_PTHREADS_INIT)
     option(HAVE_PTHREADS "pthreads library is present on the platform" ON)
-endif ()
-
-find_package(XercesC 3.2.0)
-if (NOT XercesC_FOUND)
-    message(STATUS "XercesC library could not be located on the platform. XML Loading is disabled.")
-endif ()
-
-find_package(Curses)
-if (CURSES_FOUND)
-    option(HAVE_CURSES "Curses library is present on the platform" ON)
 endif ()
 
 # Link required libraries for symbol checks
@@ -123,40 +166,12 @@ endif ()
 # Compiler/Linker flags for all build types
 add_compile_options(${FORCE_ERROR} ${DISABLED_OPTIMIZATIONS})
 
-## Set up platform specific library linking and platform identification
-if (WIN32 OR MSYS OR MINGW OR CYGWIN)
-    FetchContent_Declare(
-            dlfcn-win32
-            GIT_REPOSITORY https://github.com/dlfcn-win32/dlfcn-win32.git
-            GIT_TAG v1.3.1
-    )
-    FetchContent_MakeAvailable(dlfcn-win32)
-    include_directories(${dlfcn-win32_SOURCE_DIR}/src)
-    set(DL_NAME dl)
-    set(DL_LIB dl)
-
-    set(OS_SPECIFIC_LIBRARIES ws2_32 wsock32 ${DL_NAME} m)
-    set(FOUND_WINDOWS yes CACHE INTERNAL "Tell script generator we're Windows")
-    add_compile_options(-static-libgcc -static-libstdc++ -static)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++ -static")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -static")
-elseif (APPLE)
-    set(OS_SPECIFIC_LIBRARIES ${CMAKE_DL_LIBS})
-    set(FOUND_MACOS yes CACHE INTERNAL "Tell script generator we're MacOS")
-else ()
-    set(OS_SPECIFIC_LIBRARIES ${CMAKE_DL_LIBS})
-endif ()
-LIST(APPEND CMAKE_REQUIRED_LIBRARIES ${OS_SPECIFIC_LIBRARIES})
-if (CMAKE_REQUIRED_LIBRARIES)
-    LIST(REMOVE_DUPLICATES CMAKE_REQUIRED_LIBRARIES)
-endif ()
-
 # Generate runtime wrapper script
 set(GENFILE_WARNING
         "WARNING: This is a CMake generated file, modifications to this file will be overwritten."
         CACHE INTERNAL
         "Warn user that gridlabd.sh is a generated file."
-        )
+)
 
 find_program(
         GLD_CLANG_TIDY_EXE
@@ -196,7 +211,7 @@ set(GLD_MODULES
         tape_plot
         glsolvers
         glxengine
-        )
+)
 
 set(HEADER_FILE_NAMES
         ${CMAKE_SOURCE_DIR}/gldcore/class.h
@@ -211,12 +226,12 @@ set(HEADER_FILE_NAMES
         ${CMAKE_SOURCE_DIR}/gldcore/property.h
         ${CMAKE_SOURCE_DIR}/gldcore/schedule.h
         ${CMAKE_SOURCE_DIR}/gldcore/test.h
-        )
+)
 file(COPY ${HEADER_FILE_NAMES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/headers)
 list(APPEND HEADER_FILE_NAMES
         ${CMAKE_CURRENT_BINARY_DIR}/headers/build.h
         ${CMAKE_CURRENT_BINARY_DIR}/headers/version.h
-        )
+)
 
 set(GLD_SHARE
         ${CMAKE_SOURCE_DIR}/gldcore/tzinfo.txt
@@ -288,43 +303,9 @@ set(GLD_SHARE
         ${CMAKE_SOURCE_DIR}/models/wind_turbine_example.glm
         #        ${CMAKE_SOURCE_DIR}/gldcore/gridlabd.htm
         ${CMAKE_SOURCE_DIR}/gldcore/gridlabd.htm
-        )
+)
 
 file(COPY ${GLD_SHARE} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/share)
-
-#include_directories(third_party/dlfcn-win32)
-
-if (GLD_USE_SUPERLU)
-    set(THIRD_PARTY_PATH ${CMAKE_SOURCE_DIR}/third_party)
-    #    include(third_party/superLU_MT/CMakeLists.txt)
-
-    add_subdirectory(third_party/superLU_MT EXCLUDE_FROM_ALL)
-    set(SUPERLU_LIB superlu_lib)
-
-    #    list(APPEND CMAKE_MODULE_PATH
-    #            ${CMAKE_BINARY_DIR}/third_party/SuperLU/SRC
-    #            ${CMAKE_BINARY_DIR}/third_party/SuperLU/CBLAS
-    #            )
-    #    include_directories(third_party/SuperLU/SRC)
-    #    add_subdirectory(third_party/SuperLU)
-    #    set(SUPERLU_LIB superlu)
-endif ()
-
-option(JSONCPP_WITH_TESTS "Build the JSON CPP test suite" OFF)
-set(BUILD_SHARED_CACHE ${BUILD_SHARED_LIBS} CACHE INTERNAL "Cache the shared library state")
-SET(BUILD_SHARED_LIBS OFF)
-add_subdirectory(third_party/jsoncpp_lib EXCLUDE_FROM_ALL)
-get_target_property(JSON_INC_PATH jsoncpp_lib INTERFACE_INCLUDE_DIRECTORIES)
-include_directories(${JSON_INC_PATH})
-set(BUILD_SHARED_LIBS ${BUILD_SHARED_CACHE})
-set(JSONCPP_LIB jsoncpp_lib)
-
-if (GLD_USE_EIGEN)
-    message(FATAL_ERROR "Eigen implementation is not complete, and should not be used at this time.")
-    list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/third_party/Eigen/cmake) # Gives us FindKLU.cmake without replicating code
-    include_directories(third_party/Eigen)
-    find_package(Eigen3 3.3 REQUIRED NO_MODULE)
-endif ()
 
 # Configure module targets
 add_subdirectory(assert)
@@ -370,12 +351,10 @@ set(GLD_LIBS
         tape_plot
         glsolvers
         glxengine
-        )
+)
 set(GLD_DEPS
-        ${SUPERLU_LIB}
-        ${JSONCPP_LIB}
         ${DL_LIB}
-        )
+)
 
 mark_as_advanced(FORCE
         OS_SPECIFIC_LIBRARIES
@@ -385,43 +364,43 @@ mark_as_advanced(FORCE
         HEADER_FILE_NAMES
         GLD_SHARE
         GLD_CI_BUILD
-        )
+)
 
 
 set(FILE_PERMISSIONS PERMISSIONS
         OWNER_EXECUTE OWNER_READ OWNER_WRITE
         GROUP_EXECUTE GROUP_READ
         WORLD_EXECUTE WORLD_READ
-        )
+)
 install(FILES
         ${CMAKE_CURRENT_BINARY_DIR}/script/${GLD_PACKAGE}.sh
         ${FILE_PERMISSIONS}
         DESTINATION bin
         COMPONENT Runtime
-        )
+)
 if (WIN32 OR MSYS OR MINGW OR CYGWIN)
     install(FILES
             ${CMAKE_CURRENT_BINARY_DIR}/script/${GLD_PACKAGE}.bat
             ${FILE_PERMISSIONS}
             DESTINATION bin
             COMPONENT Runtime
-            )
+    )
 endif ()
 install(FILES ${HEADER_FILE_NAMES}
         ${FILE_PERMISSIONS}
         DESTINATION include
         COMPONENT Runtime
-        )
+)
 install(FILES ${GLD_SHARE}
         ${FILE_PERMISSIONS}
         DESTINATION share
         COMPONENT Runtime
-        )
+)
 install(FILES COPYRIGHT LICENSE
         ${FILE_PERMISSIONS}
         DESTINATION share/doc
         COMPONENT Runtime
-        )
+)
 install(TARGETS
         ${GLD_LIBS}
         ${GLD_BINARIES}
@@ -434,6 +413,6 @@ install(TARGETS
         COMPONENT Runtime
         ARCHIVE DESTINATION lib/static
         COMPONENT Development
-        )
+)
 
 include(cmake/CPackConfig.cmake)

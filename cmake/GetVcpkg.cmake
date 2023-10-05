@@ -1,0 +1,17 @@
+if (GLD_USE_HELICS)
+    list(APPEND VCPKG_MANIFEST_FEATURES "helics")
+endif ()
+if (GLD_USE_FNCS)
+    list(APPEND VCPKG_MANIFEST_FEATURES "fncs")
+endif ()
+# MySQL dependency ICU is currently broken, and would need to be fixed before it could be used in this manner
+#if (GLD_USE_MYSQL)
+#    list(APPEND VCPKG_MANIFEST_FEATURES "mysql")
+#endif ()
+
+if (EXISTS ${CMAKE_SOURCE_DIR}/third_party/vcpkg/scripts/buildsystems/vcpkg.cmake)
+    set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/third_party/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE STRING "Vcpkg toolchain file")
+    list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+else ()
+    message(FATAL_ERROR "vcpkg not found, run `git submodule update --init` to load package")
+endif ()

@@ -116,43 +116,10 @@ add_library(${GLD_MODULE_NAME}
         ${NR_SOLVER}
         )
 
-if (GLD_USE_EIGEN)
-    find_package(KLU)
-    target_compile_definitions(${GLD_MODULE_NAME} PRIVATE GLD_USE_EIGEN)
-    if (KLU_FOUND)
-        target_compile_definitions(${GLD_MODULE_NAME} PRIVATE GLD_USE_KLU)
-    endif ()
-    target_include_directories(${GLD_MODULE_NAME} PRIVATE
-            "${CMAKE_SOURCE_DIR}/third_party/Eigen"
-            "${KLU_INCLUDES}"
-            )
-    target_link_libraries(${GLD_MODULE_NAME} PRIVATE
-            Eigen3::Eigen
-            ${KLU_LIBRARIES}
-            )
-else ()
-    target_include_directories(${GLD_MODULE_NAME} PRIVATE
-            #            "${CMAKE_SOURCE_DIR}/third_party/SuperLU/SRC"
-            "${CMAKE_SOURCE_DIR}/third_party/superLU_MT"
-            )
-    target_link_libraries(${GLD_MODULE_NAME} PRIVATE
-            #            superlu
-            superlu_lib
-            )
-endif ()
-
-target_include_directories(${GLD_MODULE_NAME} PRIVATE
-        "${CMAKE_SOURCE_DIR}/third_party/jsoncpp/include"
-        )
-
-target_link_libraries(${GLD_MODULE_NAME} PRIVATE
-        jsoncpp_lib
-        )
-
 target_compile_options(${GLD_MODULE_NAME} PRIVATE ${GLD_COMPILE_OPTIONS})
 set_target_properties(${GLD_MODULE_NAME} PROPERTIES PREFIX "")
 target_include_directories(${GLD_MODULE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/gldcore")
-target_link_libraries(${GLD_MODULE_NAME} PRIVATE ${OS_SPECIFIC_LIBRARIES})
+target_link_libraries(${GLD_MODULE_NAME} PRIVATE ${OS_SPECIFIC_LIBRARIES} ${GLD_VCPKG_DEPS})
 if (GLD_USE_CLANG_TIDY)
     set_target_properties(${GLD_MODULE_NAME} PROPERTIES
             CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY}"

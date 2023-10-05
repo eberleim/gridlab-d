@@ -40,13 +40,7 @@ Initialization after returning to service?
 /* access to module global variables */
 #include "powerflow.h"
 
-#define MT // this enables multithreaded SuperLU
-
-#ifdef MT
-#include <slu_mt_ddefs.h>	//superLU_MT
-#else
-#include <slu_ddefs.h>	//Sequential superLU (other platforms)
-#endif
+#include <slu_ddefs.h>
 
 namespace gld {
     template<typename Tv, typename Te>

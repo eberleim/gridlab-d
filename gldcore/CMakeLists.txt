@@ -151,7 +151,7 @@ endif ()
 
 target_compile_options(${GLD_MODULE_NAME} PRIVATE ${GLD_COMPILE_OPTIONS})
 set_target_properties(${GLD_MODULE_NAME} PROPERTIES PREFIX "")
-target_link_libraries(${GLD_MODULE_NAME} PRIVATE ${OS_SPECIFIC_LIBRARIES})
+target_link_libraries(${GLD_MODULE_NAME} PRIVATE ${OS_SPECIFIC_LIBRARIES} ${GLD_VCPKG_DEPS})
 target_include_directories(${GLD_MODULE_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/headers)
 
 install(TARGETS ${GLD_MODULE_NAME}

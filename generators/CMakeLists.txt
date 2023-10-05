@@ -1,19 +1,5 @@
 SET(GLD_MODULE_NAME generators)
 
-if (GLD_USE_FRUGALLY)
-        FIND_PACKAGE(frugally-deep CONFIG HINTS ${GLD_FRUGALLY_DIR} $ENV{FunctionalPlus_DIR} $ENV{nlohmann_json_DIR})
-        if (frugally-deep_FOUND)
-                set(FRUGALLY_LIB frugally-deep)
-                message(STATUS "Frugally-deep library found.")
-        else()
-                message(STATUS "Frugal-deep library could not be located on the platform. Those capabilites are disabled.")
-                set(FRUGALLY_LIB)
-        endif()
-else ()
-        message(STATUS "Frugal-deep library not enabled. Those capabilites are disabled.")
-        set(FRUGALLY_LIB)
-endif ()
-
 add_library(${GLD_MODULE_NAME}
         battery.cpp
         battery.h
@@ -60,48 +46,10 @@ add_library(${GLD_MODULE_NAME}
 
 set_target_properties(${GLD_MODULE_NAME} PROPERTIES PREFIX "")
 
-
-if (GLD_USE_EIGEN)
-    target_include_directories(${GLD_MODULE_NAME} PRIVATE
-            "${CMAKE_SOURCE_DIR}/third_party/Eigen"
-            )
-    target_link_libraries(${GLD_MODULE_NAME} PRIVATE
-            Eigen3::Eigen
-            )
-else ()
-    target_include_directories(${GLD_MODULE_NAME} PRIVATE
-            #            "${CMAKE_SOURCE_DIR}/third_party/SuperLU/SRC"
-            "${CMAKE_SOURCE_DIR}/third_party/superLU_MT"
-            )
-    target_link_libraries(${GLD_MODULE_NAME} PRIVATE
-            #            superlu
-            superlu_lib
-            )
-endif ()
-
-if (GLD_USE_FRUGALLY AND FRUGALLY_LIB)
-        FIND_PACKAGE(Eigen3 NO_MODULE HINTS ${GLD_FRUGAL_EIGEN_DIR})
-        target_include_directories(${GLD_MODULE_NAME} PRIVATE
-                ${GLD_FRUGALLY_DIR}
-                ${GLD_FRUGALLY_DIR}/include
-                ${GLD_FRUGAL_EIGEN_DIR}
-                ${GLD_FRUGAL_EIGEN_DIR}/include
-                $ENV{FunctionalPlus_DIR}
-                $ENV{FunctionalPlus_DIR}/include
-                $ENV{nlohmann_json_DIR}
-                $ENV{nlohmann_json_DIR}/include
-        )
-        target_link_libraries(${GLD_MODULE_NAME} PRIVATE
-                Eigen3::Eigen
-        )
-
-        target_compile_definitions(${GLD_MODULE_NAME} PRIVATE HAVE_FRUGALLY)
-endif()
-
 target_compile_options(${GLD_MODULE_NAME} PRIVATE ${GLD_COMPILE_OPTIONS})
 set_target_properties(${GLD_MODULE_NAME} PROPERTIES PREFIX "")
 target_include_directories(${GLD_MODULE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/gldcore")
-target_link_libraries(${GLD_MODULE_NAME} PRIVATE ${OS_SPECIFIC_LIBRARIES})
+target_link_libraries(${GLD_MODULE_NAME} PRIVATE ${OS_SPECIFIC_LIBRARIES} ${GLD_VCPKG_DEPS})
 if (GLD_USE_CLANG_TIDY)
     set_target_properties(${GLD_MODULE_NAME} PROPERTIES
             CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY}"

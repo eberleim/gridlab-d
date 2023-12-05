@@ -4,7 +4,7 @@
   "builtin-baseline" : "d5b03c125afee1d9cef38f4cfa77e229400fb48a",
   "dependencies" : [ {
     "name" : "eigen3",
-    "version>=" : "3.4.0#2"
+    "version>=" : "3.4.0#3"
   }, {
     "name" : "superlu",
     "version>=" : "5.3.0#1"

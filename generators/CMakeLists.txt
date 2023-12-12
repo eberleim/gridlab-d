@@ -1,5 +1,13 @@
 SET(GLD_MODULE_NAME generators)
 
+if(GLD_USE_FRUGALLY)
+	find_package(frugally-deep CONFIG REQUIRED)
+	find_package(Eigen3 CONFIG REQUIRED)
+	find_package(nlohmann_json CONFIG REQUIRED)
+	find_package(FunctionalPlus CONFIG REQUIRED)
+	SET(FRUGALLY_DEEP_LIBS frugally-deep::fdeep FunctionalPlus::fplus Eigen3::Eigen nlohmann_json::nlohmann_json)
+endif()
+
 add_library(${GLD_MODULE_NAME}
         battery.cpp
         battery.h
@@ -50,6 +58,13 @@ target_compile_options(${GLD_MODULE_NAME} PRIVATE ${GLD_COMPILE_OPTIONS})
 set_target_properties(${GLD_MODULE_NAME} PROPERTIES PREFIX "")
 target_include_directories(${GLD_MODULE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/gldcore")
 target_link_libraries(${GLD_MODULE_NAME} PRIVATE ${OS_SPECIFIC_LIBRARIES} ${GLD_VCPKG_DEPS})
+target_link_libraries(${GLD_MODULE_NAME} INTERFACE ${FRUGALLY_DEEP_LIBS})
+#target_include_directories(${GLD_MODULE_NAME} PRIVATE ${VCPKG_INSTALL_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+if(frugally-deep_FOUND)
+	target_compile_definitions(${GLD_MODULE_NAME} PRIVATE HAVE_FRUGALLY)
+endif()
+
 if (GLD_USE_CLANG_TIDY)
     set_target_properties(${GLD_MODULE_NAME} PROPERTIES
             CXX_CLANG_TIDY "${CMAKE_CXX_CLANG_TIDY}"

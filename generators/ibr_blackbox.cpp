@@ -1,5 +1,7 @@
 // Skeleton/empty object with deltamode capabilities
 // Comments in //**** ****// are brief descriptions of what a function does or where it may go.
+#ifdef HAVE_FRUGALLY
+
 #include<memory>
 
 #include "ibr_blackbox.h"
@@ -1516,3 +1518,4 @@ EXPORT STATUS ibr_blackbox_NR_current_injection_update(OBJECT *obj, int64 iterat
 	//Return what the sub function said we were
 	return temp_status;
 }
+#endif // HAVE_FRUGALLY

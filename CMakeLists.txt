@@ -80,18 +80,17 @@ set(CURSES_NEED_NCURSES TRUE)
 find_package(Curses REQUIRED)
 
 find_package(Eigen3 CONFIG REQUIRED)
-find_package(frugally-deep CONFIG REQUIRED)
 find_package(jsoncpp CONFIG REQUIRED)
 find_package(superlu CONFIG REQUIRED)
 find_package(XercesC REQUIRED)
 find_package(hdf5 CONFIG REQUIRED)
 
 set(GLD_VCPKG_DEPS
-        Eigen3::Eigen
-        frugally-deep::fdeep
+#        Eigen3::Eigen
         JsonCpp::JsonCpp
         superlu::superlu
         XercesC::XercesC
+#        hdf5::hdf5
         hdf5::hdf5-static
         hdf5::hdf5_hl-static
 )
@@ -113,8 +112,8 @@ mark_as_advanced(GLD_VCPKG_DEPS)
 
 # Set up platform specific library linking and platform identification
 if (WIN32 OR MSYS OR MINGW OR CYGWIN)
-    find_package(dlfcn-win32 REQUIRED)
-    set(OS_SPECIFIC_LIBRARIES ws2_32 wsock32 m dlfcn-win32:dl)
+    find_package(dlfcn-win32 CONFIG REQUIRED)
+    set(OS_SPECIFIC_LIBRARIES ws2_32 wsock32 m dlfcn-win32::dl)
     set(FOUND_WINDOWS yes CACHE INTERNAL "Tell script generator we're Windows")
     add_compile_options(-static-libgcc -static-libstdc++ -static)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++ -static")

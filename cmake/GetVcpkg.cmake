@@ -4,6 +4,11 @@ endif ()
 if (GLD_USE_FNCS)
     list(APPEND VCPKG_MANIFEST_FEATURES "fncs")
 endif ()
+if (GLD_USE_FRUGALLY AND (WIN32 AND NOT MSVC))
+    message(FATAL_ERROR "Frugally-deep is not currently compatible with MSYS/MINGW build systems, and will fail at link time. Please use a Linux or WSL platform to run Frugally-deep")
+elseif(GLD_USE_FRUGALLY)
+    list(APPEND VCPKG_MANIFEST_FEATURES "frugally")
+endif ()
 # MySQL dependency ICU is currently broken, and would need to be fixed before it could be used in this manner
 #if (GLD_USE_MYSQL)
 #    list(APPEND VCPKG_MANIFEST_FEATURES "mysql")
@@ -15,3 +20,4 @@ if (EXISTS ${CMAKE_SOURCE_DIR}/third_party/vcpkg/scripts/buildsystems/vcpkg.cmak
 else ()
     message(FATAL_ERROR "vcpkg not found, run `git submodule update --init` to load package")
 endif ()
+

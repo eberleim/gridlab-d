@@ -1,15 +1,15 @@
+#ifdef HAVE_FRUGALLY
+
 #ifndef GLD_GENERATORS_IBR_BLACKBOX_H_
 #define GLD_GENERATORS_IBR_BLACKBOX_H_
 
 #include <vector>
+#include <fdeep/fdeep.hpp>
 
 #include "cblock.h"
 
 #include "generators.h"
 
-#ifdef HAVE_FRUGALLY
-#include "fdeep/fdeep.hpp"
-#endif
 
 EXPORT int isa_ibr_blackbox(OBJECT *obj, char *classname);
 EXPORT STATUS preupdate_ibr_blackbox(OBJECT *obj, TIMESTAMP t0, unsigned int64 delta_time);
@@ -119,3 +119,4 @@ public:
 };
 
 #endif // GLD_GENERATORS_IBR_BLACKBOX_H_
+#endif // HAVE_FRUGALLY

@@ -67,8 +67,10 @@ EXPORT CLASS *init(CALLBACKS *fntable, MODULE *module, int argc, char *argv[])
 	new ibr_gfl(module);
 	new ibr_gfm_vsm(module);
 	new ibr_gfm_drp(module);
-	new ibr_blackbox(module);
 	new ibr_graybox(module);
+#ifdef HAVE_FRUGALLY
+    new ibr_blackbox(module);
+#endif
 
 	/* Clear the deltamode list too, just in case*/
 	delta_object.clear();
